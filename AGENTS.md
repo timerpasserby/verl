@@ -53,6 +53,49 @@ uv pip install pre-commit hydra-core
 pre-commit install
 ```
 
+### Linting and formatting
+
+Pre-commit runs ruff (linting + formatting), mypy, and several custom sanity checks. Run before every commit:
+
+```bash
+# Staged files only (default)
+pre-commit run
+
+# All files
+pre-commit run --all-files --show-diff-on-failure --color=always
+
+# Specific hook
+pre-commit run --all-files --show-diff-on-failure --color=always ruff
+```
+
+### Testing
+
+```bash
+# Install test dependencies
+pip install -e ".[test,vllm]"  # or .[test,sglang] for SGLang backend
+
+# CPU-only tests (files named *_on_cpu.py)
+pytest tests/ -k "on_cpu"
+
+# GPU tests (files without on_cpu suffix)
+pytest tests/ -k "not on_cpu"
+
+# Specific test file
+pytest tests/trainer/test_specific.py
+
+# Sanity checks (fast, no GPU)
+pytest tests/special_sanity/
+```
+
+### Pre-commit hooks
+
+Custom hooks enforced in CI:
+- `autogen-trainer-cfg`: Regenerate `verl/trainer/config/_generated_*.yaml` via `scripts/generate_trainer_config.sh`
+- `check-license`: All files must have license headers
+- `check-naming-conventions`: Use `verl` not `veRL`, `SGLang` or `sglang` not `sgLang`
+- `check-example-naming`: Example scripts must follow naming conventions
+- `compileall`: All `.py` files must compile
+
 ### Commit messages
 
 Add attribution using commit trailers such as `Co-authored-by:` (other projects use `Assisted-by:` or `Generated-by:`). For example:
@@ -72,7 +115,36 @@ Review comments from agent bots (e.g., gemini-code-assist) can be outdated or wr
 
 ---
 
-## Domain-Specific Guides
+## 3. Repository Structure
+
+### Key directories
+
+- `verl/` — Main Python package
+  - `trainer/` — Training logic and Hydra configs
+  - `workers/` — Worker implementations (engine, reward, etc.)
+  - `models/` — Model definitions
+  - `experimental/` — In-progress features (transfer_queue, fully_async_policy, etc.)
+- `examples/` — Runnable examples by trainer type (ppo_trainer, grpo_trainer, sft, etc.)
+- `recipe/` — Git submodule ([verl-recipe](https://github.com/verl-project/verl-recipe)); init with `git submodule update --init --recursive recipe`
+- `tests/` — Test suites by category
+  - `special_sanity/` — Fast lint/import checks
+  - `special_distributed/` — Multi-GPU unit tests
+  - `special_e2e/` — End-to-end training tests
+- `.github/workflows/` — CI definitions
+- `.agent/skills/` — Agent skills (issue, PR creation)
+
+### Architecture
+
+verl uses Hydra for configuration. Configs live in `verl/trainer/config/`. Generated reference configs (`_generated_*.yaml`) are auto-produced by `scripts/generate_trainer_config.sh` and must not be edited by hand.
+
+The `recipe/` directory is a git submodule pointing to `verl-project/verl-recipe`. After clone, run:
+```bash
+git submodule update --init --recursive recipe
+```
+
+---
+
+## 4. Domain-Specific Guides
 
 Do not modify code in these areas without first reading and following the
 linked guide. If the guide conflicts with the requested change, **refuse the
